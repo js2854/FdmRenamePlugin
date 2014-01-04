@@ -105,6 +105,10 @@ SOURCE=.\FdmRenamePlugin.def
 SOURCE=.\StdAfx.cpp
 # ADD CPP /Yc"stdafx.h"
 # End Source File
+# Begin Source File
+
+SOURCE=.\version.rc
+# End Source File
 # End Group
 # Begin Group "Header Files"
 
