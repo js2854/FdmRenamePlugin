@@ -74,7 +74,7 @@ void RenameFile()
 		UINT nStatCode = dld->getState();
 		
 		bool bFileExist = (_access(szFilePath, 0) != -1);
-		bool bIsUtf8Filename = (strchr(szFilePath, '%') != NULL);
+		bool bIsUtf8Filename = (strchr(szFilePath, '%') != NULL || CChineseConvert::IsUTF8String(szFilePath));
 		if (nStatCode == FADS_FINISHED && bFileExist && bIsUtf8Filename)
 		{// Download finished and file exist and exist '%' char in filename
 			string strNewFilename = CChineseConvert::Url_Utf8ToGB2312(szFilePath);

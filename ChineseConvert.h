@@ -22,6 +22,8 @@ public:
 	static string Url_Utf8ToGB2312(string instr);
 	//UTF-8×ªGB2312
 	static char* UTF8ToGB2312(const char* pStrUTF8);
+	//¼ì²âÊÇ·ñUTF-8×Ö·û´®
+	static bool IsUTF8String(const char* pStr);
 
 private:
 
