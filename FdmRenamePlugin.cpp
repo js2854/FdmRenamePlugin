@@ -5,7 +5,6 @@
 #include "./include/fdm.h"
 #include <stdio.h>
 #include <io.h>		// for _access
-#include <time.h>	// for time
 
 #include "ChineseConvert.h"
 
@@ -19,7 +18,7 @@ static bool g_exit = false;
 static HANDLE g_hThread = NULL;
 
 //debug and log
-static FILE* g_fp = NULL;
+extern FILE* g_fp;
 
 void KillThread();
 
@@ -35,24 +34,6 @@ void DebugCheck()
 	{
 		string logFilePath = string(dllDir) + DLL_NAME + ".log";
 		g_fp = fopen(logFilePath.c_str(), "a+");
-	}
-}
-
-void Log2File(const char* format_str, ...)
-{
-	if (g_fp)
-	{
-		time_t t = time(NULL);
-		struct tm *ptime = localtime(&t);
-		va_list p_list;
-		va_start(p_list, format_str);
-		fprintf(g_fp, "[%04d%02d%02d-%02d:%02d:%02d]", 
-			(1900+ptime->tm_year), (1+ptime->tm_mon), ptime->tm_mday,
-            ptime->tm_hour, ptime->tm_min, ptime->tm_sec);
-		vfprintf(g_fp, format_str, p_list);
-		va_end(p_list);
-
-		fflush(g_fp);
 	}
 }
 
@@ -98,13 +79,22 @@ void FdmApiPluginGetDescription (LPSTR pszPluginShortName, LPSTR pszPluginLongNa
 {
 	strcpy (pszPluginShortName, "FDMExPlug");
 	strcpy (pszPluginLongName, "FDM Rename plugin");
-	strcpy (pszPluginVersion, "1.0.0.3");
+	strcpy (pszPluginVersion, "1.0.0.4");
 	strcpy (pszPluginDescription, "This plugin helps to adjust UTF-8 Chinese filename.");
 }
+
+typedef enum { GET_NAME=0, GET_DIR } GetType;
+
+string GetFileNameOrDir(const string& filePath, GetType type)
+{
+	int pos = filePath.find_last_of('\\') + 1;
+	return ((type == GET_NAME) ? filePath.substr(pos) : filePath.substr(0, pos));
+}
+
 // if `dst` file exist, src file will be rename to format like `dst (1)`  
 string RenameEx(const char* src, const char* dst)
 {
-	string strNewFilePath = dst;
+	string newFilePath = dst;
 	if (FILE_EXIST(dst))
 	{
 		char tmpPath[MAX_PATH] = {0};
@@ -115,23 +105,23 @@ string RenameEx(const char* src, const char* dst)
 			sprintf(tmpPath, "%s (%d)%s", filename.c_str(), i, pExt);
 			if (!FILE_EXIST(tmpPath))
 			{
-				strNewFilePath = tmpPath;
+				newFilePath = tmpPath;
 				break;
 			}
 		}
 	}
 	
-	if (rename(src, strNewFilePath.c_str()) != 0)
-	{
-		strNewFilePath = "";
-		Log2File("Rename '%s' -> '%s' failure, Error: %s\n", src, strNewFilePath.c_str(), strerror(errno));
+	if (rename(src, newFilePath.c_str()) != 0)
+	{		
+		Log2File("Rename '%s' -> '%s' failure, Error: %s\n", src, newFilePath.c_str(), strerror(errno));
+		newFilePath = "";
 	}
 	else
 	{
-		Log2File("Rename '%s' -> '%s' success.\n", src, strNewFilePath.c_str());
+		Log2File("Rename '%s' -> '%s' success.\n", src, newFilePath.c_str());
 	}
 
-	return strNewFilePath;//return real file name
+	return newFilePath;//return real file name
 }
 
 // UTF-8 To GB2312
@@ -139,7 +129,7 @@ void RenameFile()
 {
 	UINT n = _pFdmApi->getFdmBuildNumber();
 	
-	char szFilePath[1024] = {0};
+	char szFilePath[MAX_PATH] = {0};
 	
 	UINT nDownloadCount = _pFdmApi->getDownloadsMgr()->getDownloadCount();
 		
@@ -153,8 +143,11 @@ void RenameFile()
 		bool bIsUtf8Filename = (strchr(szFilePath, '%') != NULL || CChineseConvert::IsUTF8String(szFilePath));
 		if (nStatCode == FADS_FINISHED && bFileExist && bIsUtf8Filename)
 		{// Download finished and file exist and exist '%' char in filename
-			string strNewFilename = CChineseConvert::Url_Utf8ToGB2312(szFilePath);
-			RenameEx(szFilePath, strNewFilename.c_str());			
+			string origFullPath = szFilePath;
+			string origFileDir = GetFileNameOrDir(origFullPath, GET_DIR);
+			string origFileName = GetFileNameOrDir(origFullPath, GET_NAME);
+			string newFilename = CChineseConvert::Url_Utf8ToGB2312(origFileName);
+			RenameEx(szFilePath, (origFileDir + newFilename).c_str());			
 		}
 	}
 }

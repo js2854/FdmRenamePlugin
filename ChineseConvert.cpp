@@ -6,6 +6,28 @@
 #include "ChineseConvert.h"
 
 #include <windows.h>
+#include <time.h>	// for time
+
+//debug and log
+FILE* g_fp = NULL;
+
+void Log2File(const char* format_str, ...)
+{
+	if (g_fp)
+	{
+		time_t t = time(NULL);
+		struct tm *ptime = localtime(&t);
+		va_list p_list;
+		va_start(p_list, format_str);
+		fprintf(g_fp, "[%04d%02d%02d-%02d:%02d:%02d]", 
+			(1900+ptime->tm_year), (1+ptime->tm_mon), ptime->tm_mday,
+            ptime->tm_hour, ptime->tm_min, ptime->tm_sec);
+		vfprintf(g_fp, format_str, p_list);
+		va_end(p_list);
+		
+		fflush(g_fp);
+	}
+}
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -42,7 +64,7 @@ char CChineseConvert::Str2Bin(char *str)
 	return chn;
 }
 
-string CChineseConvert::UrlDecode(string str)
+string CChineseConvert::UrlDecode(const string& str)
 {
 	string output = "";
 	char tmp[2] = {0};
@@ -86,6 +108,7 @@ char* CChineseConvert::UTF8ToGB2312(const char* pStrUTF8)
 	char* pStr = new char[nStrLen + 1];
 	memset(pStr, 0, nStrLen + 1);
 	WideCharToMultiByte(CP_ACP, 0, pWStr, -1, pStr, nStrLen, NULL, NULL);
+	Log2File("[UTF8ToGB2312]%s -> %s\n", pWStr, pStr);
 	if(pWStr)
 	{
 		delete[] pWStr;
@@ -95,10 +118,12 @@ char* CChineseConvert::UTF8ToGB2312(const char* pStrUTF8)
 }
 
 //ÊäÈëurl_Utf-8 ,Êä³ö gb2312
-string CChineseConvert::Url_Utf8ToGB2312(string instr)
+string CChineseConvert::Url_Utf8ToGB2312(string& instr)
 {
-	string input = UrlDecode(instr);
+	string input = UrlDecode(instr);	
 	string output = UTF8ToGB2312(input.c_str());
+
+	Log2File("[Url_Utf8ToGB2312]%s -> %s -> %s\n", instr.c_str(), input.c_str(), output.c_str());
 
 	return output;
 }
